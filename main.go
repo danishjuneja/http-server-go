@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	fmt.Println("Hello, World!, moved the logic to cmd/tcplistener.go")
+	fmt.Println("moved the logic to cmd/tcplistener.go")
 }

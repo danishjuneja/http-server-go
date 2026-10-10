@@ -1,59 +1,47 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"log"
 	"net"
-	"io"
+
+	"github.com/danishjuneja/http-server-go/internal/request"
 )
 
-func getLinesChannel(f io.ReadCloser) <- chan string{
-	out := make(chan string, 1)
-	str := ""
-	go func(){
-		defer close(out)
-		defer f.Close()
-
-		for{
-			data := make([]byte, 8)
-			n, err := f.Read(data)
-
-		if err != nil{
-			break
-		}
-
-		data = data[:n]
-
-		if i := bytes.IndexByte(data, '\n'); i != -1{
-			str += string(data[:i])
-			data = data[i+1:]
-			out <- str
-			str = ""
-		}
-		str += string(data)
-
-		}
-		if len(str) != 0{
-			out <- str
-			}
-	}()
-	return out
-}
-
-func main(){
+func main() {
 	listener, err := net.Listen("tcp", ":42069")
-	if err != nil{
-		log.Fatal(err)
+
+	if err != nil {
+		fmt.Printf("Error starting server: %v\n", err)
+		return
 	}
 
-	for{
+	defer listener.Close()
+
+	for {
 		conn, err := listener.Accept()
+
 		if err != nil {
-			log.Fatal(err)
+			fmt.Printf("Error accepting connection: %v\n", err)
+			continue
 		}
-		for line := range getLinesChannel(conn){
-			fmt.Printf("read: %s\n", line)
+
+		r, err := request.RequestFromReader(conn)
+
+		if err != nil {
+			fmt.Printf("Error reading request: %v\n", err)
+			conn.Close()
+			continue
 		}
+
+		fmt.Printf("Request line:\n")
+		fmt.Printf("- Method: %s\n", r.RequestLine.Method)
+		fmt.Printf("- Target: %s\n", r.RequestLine.RequestTarget)
+		fmt.Printf("- Version: %s\n", r.RequestLine.HttpVersion)
+		fmt.Printf("Headers:\n")
+		for k, v := range r.Headers {
+			fmt.Printf("- %s: %s\n", k, v)
+		}
+		fmt.Printf("Body:\n")
+		fmt.Printf("%s\n", r.Body)
 	}
 }
